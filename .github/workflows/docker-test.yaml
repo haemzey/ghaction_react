@@ -1,0 +1,36 @@
+name: DOCKER TEST
+on: 
+    push:
+        branches:
+            - main 
+    workflow_dispatch:
+    
+permissions:
+    contents: read
+
+jobs:
+    docker-test:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
+
+            - uses: gitleaks/gitleaks-action@v3
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - run: |
+                docker pull ${{ vars.DOCKER_USERNAME }}/${{ env.ANALYTICS_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+                docker pull ${{ vars.DOCKER_USERNAME }}/${{ env.CUSTOMER_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+                docker pull ${{ vars.DOCKER_USERNAME }}/${{ env.DELIVERY_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+                docker pull ${{ vars.DOCKER_USERNAME }}/${{ env.KITCHEN_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+                docker pull ${{ vars.DOCKER_USERNAME }}/${{ env.MENU_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+                docker pull ${{ vars.DOCKER_USERNAME }}/${{ env.NOTIFICATION_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+                docker pull ${{ vars.DOCKER_USERNAME }}/${{ env.ORDER_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+                docker pull ${{ vars.DOCKER_USERNAME }}/${{ env.PAYMENT_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+                docker pull ${{ vars.DOCKER_USERNAME }}/${{ env.PROMOTION_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+                docker pull ${{ vars.DOCKER_USERNAME }}/${{ env.RESERVATION_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+                docker pull ${{ vars.DOCKER_USERNAME }}/${{ env.NGINX_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+                docker pull ${{ vars.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+                  

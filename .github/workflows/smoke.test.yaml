@@ -1,0 +1,79 @@
+name: SMOKE TEST
+on: 
+    push:
+        branches:
+            - main 
+    workflow_dispatch:
+    
+permissions:
+    contents: read
+
+jobs:
+    docker-test:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
+
+            - uses: gitleaks/gitleaks-action@v3
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+ 
+            - run:    docker run -d -p 3109:3109 --name ANALYTICS_IMAGE ${{ vars.DOCKER_USERNAME }}/${{ env.ANALYTICS_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+            - run:    docker run -d -p 3104:3104 --name CUSTOMER_IMAGE ${{ vars.DOCKER_USERNAME }}/${{ env.CUSTOMER_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+            - run:    docker run -d -p 3106:3106 --name DELIVERY_IMAGE ${{ vars.DOCKER_USERNAME }}/${{ env.DELIVERY_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+            - run:    docker run -d -p 3105:3105 --name KITCHEN_IMAGE  ${{ vars.DOCKER_USERNAME }}/${{ env.KITCHEN_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+            - run:    docker run -d -p 3101:3101 --name MENU_IMAGE ${{ vars.DOCKER_USERNAME }}/${{ env.MENU_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+            - run:    docker run -d -p 3108:3108 --name NOTIFICATION_IMAGE ${{ vars.DOCKER_USERNAME }}/${{ env.NOTIFICATION_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+            - run:    docker run -d -p 3102:3102 --name ORDER_IMAGE ${{ vars.DOCKER_USERNAME }}/${{ env.ORDER_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+            - run:    docker run -d -p 3107:3107 --name PAYMENT_IMAGE ${{ vars.DOCKER_USERNAME }}/${{ env.PAYMENT_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+            - run:    docker run -d -p 3110:3110 --name PROMOTION_IMAGE ${{ vars.DOCKER_USERNAME }}/${{ env.PROMOTION_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+            - run:    docker run -d -p 3103:3103 --name RESERVATION_IMAGE ${{ vars.DOCKER_USERNAME }}/${{ env.RESERVATION_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+            - run:    docker run -d -p 8080:80 --name mynginx ${{ vars.DOCKER_USERNAME }}/${{ env.NGINX_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+            - run:    docker run -d -p 4173:4173 --name myreact ${{ vars.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+
+           
+            - if: ${{ always() }}
+              run: curl --fail http://localhost:3101/health || true
+              run: curl --fail http://localhost:3102/health || true
+              run: curl --fail http://localhost:3103/health || true
+              run: curl --fail http://localhost:3104/health || true
+              run: curl --fail http://localhost:3105/health || true
+              run: curl --fail http://localhost:3106/health || true
+              run: curl --fail http://localhost:3107/health || true
+              run: curl --fail http://localhost:3108/health || true
+              run: curl --fail http://localhost:3109/health || true
+              run: curl --fail http://localhost:3110/health || true
+              run: curl --fail http://localhost:80/health || true
+              run: curl --fail http://localhost:4173/health || true
+
+
+            - if: ${{ always() }}
+              run: docker logs ANALYTICS_IMAGE
+              run: docker logs CUSTOMER_IMAGE
+              run: docker logs DELIVERY_IMAGE
+              run: docker logs KITCHEN_IMAGE 
+              run: docker logs MENU_IMAGE 
+              run: docker logs NOTIFICATION_IMAGE
+              run: docker logs ORDER_IMAGE
+              run: docker logs PAYMENT_IMAGE
+              run: docker logs PROMOTION_IMAGE 
+              run: docker logs RESERVATION_IMAGE 
+              run: docker logs mynginx
+              run: docker logs myreact
+              
+
+            - if: ${{ always() }}  
+              run: docker rm -rf ANALYTICS_IMAGE
+              run: docker rm -rf CUSTOMER_IMAGE
+              run: docker rm -rf DELIVERY_IMAGE
+              run: docker rm -rf KITCHEN_IMAGE 
+              run: docker rm -rf MENU_IMAGE 
+              run: docker rm -rf NOTIFICATION_IMAGE
+              run: docker rm -rf ORDER_IMAGE
+              run: docker rm -rf PAYMENT_IMAGE
+              run: docker rm -rf PROMOTION_IMAGE 
+              run: docker rm -rf RESERVATION_IMAGE 
+              run: docker rm -rf mynginx
+              run: docker rm -rf myreact
