@@ -7,6 +7,7 @@
         "dev": "vite",
         "build": "vite build",
         "preview": "vite preview",
+        "services:install": "node scripts/install-services.cjs",
         "services": "concurrently \"node services/menu-service/server.cjs\" \"node services/order-service/server.cjs\" \"node services/reservation-service/server.cjs\" \"node services/customer-service/server.cjs\" \"node services/kitchen-service/server.cjs\" \"node services/delivery-service/server.cjs\" \"node services/payment-service/server.cjs\" \"node services/notification-service/server.cjs\" \"node services/analytics-service/server.cjs\" \"node services/promotion-service/server.cjs\"",
         "docker:up": "docker compose up --build",
         "docker:down": "docker compose down"
