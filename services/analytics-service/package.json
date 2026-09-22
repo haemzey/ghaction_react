@@ -1,0 +1,13 @@
+{
+    "name": "ember-analytics-service",
+    "version": "1.0.0",
+    "private": true,
+    "main": "server.cjs",
+    "scripts": {
+        "start": "node server.cjs"
+    },
+    "dependencies": {
+        "cors": "^2.8.5",
+        "express": "^4.21.2"
+    }
+}
