@@ -1,0 +1,160 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: ${DOCKER_USERNAME}/myreact:${IMAGE_TAG}
+    container_name: frontend
+    restart: unless-stopped
+    expose:
+      - "4173"
+    networks:
+      - app-network
+
+  mynginx:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    image: ${DOCKER_USERNAME}/mynginx:${IMAGE_TAG}
+    container_name: mynginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+      - menu-service
+      - order-service
+      - reservation-service
+      - customer-service
+      - kitchen-service
+      - delivery-service
+      - payment-service
+      - notification-service
+      - analytics-service
+      - promotion-service
+    networks:
+      - app-network
+
+  menu-service:
+    build:
+      context: ./services/menu-service
+      dockerfile: Dockerfile
+    image: ${DOCKER_USERNAME}/menu-service:${IMAGE_TAG}
+    container_name: menu-service
+    restart: unless-stopped
+    expose:
+      - "3101"
+    networks:
+      - app-network
+
+  order-service:
+    build:
+      context: ./services/order-service
+      dockerfile: Dockerfile
+    image: ${DOCKER_USERNAME}/order-service:${IMAGE_TAG}
+    container_name: order-service
+    restart: unless-stopped
+    expose:
+      - "3102"
+    networks:
+      - app-network
+
+  reservation-service:
+    build:
+      context: ./services/reservation-service
+      dockerfile: Dockerfile
+    image: ${DOCKER_USERNAME}/reservation-service:${IMAGE_TAG}
+    container_name: reservation-service
+    restart: unless-stopped
+    expose:
+      - "3103"
+    networks:
+      - app-network
+
+  customer-service:
+    build:
+      context: ./services/customer-service
+      dockerfile: Dockerfile
+    image: ${DOCKER_USERNAME}/customer-service:${IMAGE_TAG}
+    container_name: customer-service
+    restart: unless-stopped
+    expose:
+      - "3104"
+    networks:
+      - app-network
+
+  kitchen-service:
+    build:
+      context: ./services/kitchen-service
+      dockerfile: Dockerfile
+    image: ${DOCKER_USERNAME}/kitchen-service:${IMAGE_TAG}
+    container_name: kitchen-service
+    restart: unless-stopped
+    expose:
+      - "3105"
+    networks:
+      - app-network
+
+  delivery-service:
+    build:
+      context: ./services/delivery-service
+      dockerfile: Dockerfile
+    image: ${DOCKER_USERNAME}/delivery-service:${IMAGE_TAG}
+    container_name: delivery-service
+    restart: unless-stopped
+    expose:
+      - "3106"
+    networks:
+      - app-network
+
+  payment-service:
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile
+    image: ${DOCKER_USERNAME}/payment-service:${IMAGE_TAG}
+    container_name: payment-service
+    restart: unless-stopped
+    expose:
+      - "3107"
+    networks:
+      - app-network
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    image: ${DOCKER_USERNAME}/notification-service:${IMAGE_TAG}
+    container_name: notification-service
+    restart: unless-stopped
+    expose:
+      - "3108"
+    networks:
+      - app-network
+
+  analytics-service:
+    build:
+      context: ./services/analytics-service
+      dockerfile: Dockerfile
+    image: ${DOCKER_USERNAME}/analytics-service:${IMAGE_TAG}
+    container_name: analytics-service
+    restart: unless-stopped
+    expose:
+      - "3109"
+    networks:
+      - app-network
+
+  promotion-service:
+    build:
+      context: ./services/promotion-service
+      dockerfile: Dockerfile
+    image: ${DOCKER_USERNAME}/promotion-service:${IMAGE_TAG}
+    container_name: promotion-service
+    restart: unless-stopped
+    expose:
+      - "3110"
+    networks:
+      - app-network
+
+networks:
+  mynetworks:
+    driver: bridge
