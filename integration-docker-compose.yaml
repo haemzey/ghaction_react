@@ -1,0 +1,17 @@
+services:
+
+  integration-test:
+    build:
+      context: ./tests/integration
+      dockerfile: Dockerfile
+
+    environment:
+      BASE_URL: http://mynginx
+      CURL_TIMEOUT: 10
+      RETRY_ATTEMPTS: 30
+      RETRY_DELAY: 2
+
+    depends_on:
+      - mynginx
+
+    restart: "no"
