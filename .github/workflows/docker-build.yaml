@@ -1,133 +1,138 @@
 name: DOCKER BUILD
-on: 
-    push:
-        branches:
-            - main 
-    workflow_dispatch:
-    
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+  workflow_dispatch:
+
 permissions:
-    contents: read
+  contents: read
 
 env:
-    FRONTEND_IMAGE: "myreact"
-    NGINX_IMAGE: "mynginx"
-    ANALYTICS_IMAGE: "analytics-service"
-    CUSTOMER_IMAGE: "customer-service"
-    DELIVERY_IMAGE: "delivery-service"
-    KITCHEN_IMAGE: "kitchen-service"
-    MENU_IMAGE: "menu-service"
-    NOTIFICATION_IMAGE: "notification-service"
-    ORDER_IMAGE: "order-service"
-    PAYMENT_IMAGE: "payment-service"
-    PROMOTION_IMAGE: "promotion-service"
-    RESERVATION_IMAGE: "reservation-service"
+  FRONTEND_IMAGE: myreact
+  NGINX_IMAGE: mynginx 
+  ANALYTICS_IMAGE: analytics-service
+  CUSTOMER_IMAGE: customer-service
+  DELIVERY_IMAGE: delivery-service
+  KITCHEN_IMAGE: kitchen-service
+  MENU_IMAGE: menu-service
+  NOTIFICATION_IMAGE: notification-service
+  ORDER_IMAGE: order-service
+  PAYMENT_IMAGE: payment-service
+  PROMOTION_IMAGE: promotion-service
+  RESERVATION_IMAGE: reservation-service
 
 concurrency:
-    group: ./.github/workflows/docker-build.yaml
-    cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 
 jobs:
-    docker-build:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v7
-              with:
-                  fetch-depth: 0
+  docker-build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
 
-            - uses: gitleaks/gitleaks-action@v3
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          - image: ${{ env.FRONTEND_IMAGE }}
+            context: ./
+            dockerfile: ./Dockerfile
+          - image: ${{ env. }}
+            context: ./
+            dockerfile: ./Dockerfile.nginx
+          - name: analytics
+            image: ${{ env. }}
+            context: ./services/analytics-service
+            dockerfile: ./services/analytics-service/Dockerfile
 
-            - id: tag
-              run: |
-                echo "IMAGE_TAG=v${{ github.runner }}-${{ github.sha }}" >> "$GITHUB_OUTPUT"
-                echo "IMAGE_TAG: ${{ steps.tag.outputs.IMAGE_TAG }}"
+          - name: customer
+            image: ${{ env. }}
+            context: ./services/customer-service
+            dockerfile: ./services/customer-service/Dockerfile
 
-            - uses: docker/login-action@v4
-              with:
-                  username: ${{ vars.DOCKER_USERNAME }}
-                  password: ${{ secrets.DOCKER_TOKEN }}
+          - name: delivery
+            image: ${{ env. }}
+            context: ./services/delivery-service
+            dockerfile: ./services/delivery-service/Dockerfile
 
-            - uses: docker/build-push-action@v7
-              with:
-                  context: ./services/analytics-service
-                  push: true
-                  load: true
-                  tags: ${{ vars.DOCKER_USERNAME }}/${{ env.ANALYTICS_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+          - name: kitchen
+            image: ${{ env. }}
+            context: ./services/kitchen-service
+            dockerfile: ./services/kitchen-service/Dockerfile
 
-            - uses: docker/build-push-action@v7
-              with:
-                  context: ./services/customer-service
-                  push: true
-                  load: true
-                  tags: ${{ vars.DOCKER_USERNAME }}/${{ env.CUSTOMER_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
-            
-            - uses: docker/build-push-action@v7
-              with:
-                  context: ./services/delivery-service
-                  push: true
-                  load: true
-                  tags: ${{ vars.DOCKER_USERNAME }}/${{ env.DELIVERY_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+          - name: menu
+            image: ${{ env. }}
+            context: ./services/menu-service
+            dockerfile: ./services/menu-service/Dockerfile
 
-            - uses: docker/build-push-action@v7
-              with:
-                  context: ./services/kitchen-service
-                  push: true
-                  load: true
-                  tags: ${{ vars.DOCKER_USERNAME }}/${{ env.KITCHEN_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+          - name: notification
+            image: ${{ env. }}
+            context: ./services/notification-service
+            dockerfile: ./services/notification-service/Dockerfile
 
-            - uses: docker/build-push-action@v7
-              with:
-                  context: ./services/menu-service
-                  push: true
-                  load: true
-                  tags: ${{ vars.DOCKER_USERNAME }}/${{ env.MENU_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+          - name: order
+            image: ${{ env. }}
+            context: ./services/order-service
+            dockerfile: ./services/order-service/Dockerfile
 
-            - uses: docker/build-push-action@v7
-              with:
-                  context: ./services/notification-service
-                  push: true
-                  load: true
-                  tags: ${{ vars.DOCKER_USERNAME }}/${{ env.NOTIFICATION_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+          - name: payment
+            image: ${{ env. }}
+            context: ./services/payment-service
+            dockerfile: ./services/payment-service/Dockerfile
 
-            - uses: docker/build-push-action@v7
-              with:
-                  context: ./services/"order-service
-                  push: true
-                  load: true
-                  tags: ${{ vars.DOCKER_USERNAME }}/${{ env.ORDER_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+          - name: promotion
+            image: ${{ env. }}
+            context: ./services/promotion-service
+            dockerfile: ./services/promotion-service/Dockerfile
 
-            - uses: docker/build-push-action@v7
-              with:
-                  context: ./services/payment-service
-                  push: true
-                  load: true
-                  tags: ${{ vars.DOCKER_USERNAME }}/${{ env.PAYMENT_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+          - name: reservation
+            image: ${{ env. }}
+            context: ./services/reservation-service
+            dockerfile: ./services/reservation-service/Dockerfile
 
-            - uses: docker/build-push-action@v7
-              with:
-                  context: ./services/promotion-service"
-                  push: true
-                  load: true
-                  tags: ${{ vars.DOCKER_USERNAME }}/${{ env.PROMOTION_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
 
-            - uses: docker/build-push-action@v7
-              with:
-                  context: ./services/reservation-service
-                  push: true
-                  load: true
-                  tags: ${{ vars.DOCKER_USERNAME }}/${{ env.RESERVATION_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+            fetch-depth: 0
 
-            - uses: docker/build-push-action@v7
-              with:
-                  context: ./services/Dockerfile.nginx
-                  push: true
-                  load: true
-                  tags: ${{ vars.DOCKER_USERNAME }}/${{ env.NGINX_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+      - name: Generate image tag
+        id: tag
+        run: |
+          IMAGE_TAG="v${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "Image tag: $IMAGE_TAG"
 
-            - uses: docker/build-push-action@v7
-              with:
-                  context: ./services/Dockerfile
-                  push: true
-                  load: true
-                  tags: ${{ vars.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE }}:${{ steps.tag.outputs.IMAGE_TAG }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push ${{ matrix.name }}
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+
+          push: true
+
+          tags: |
+            ${{ vars.DOCKER_USERNAME }}/${{ matrix.image }}:${{ steps.tag.outputs.IMAGE_TAG }}
+            ${{ vars.DOCKER_USERNAME }}/${{ matrix.image }}:latest
+
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
