@@ -1,0 +1,173 @@
+name: DEPLOY ECS
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image tag to deploy to ECS"
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+
+concurrency:
+  group: deploy-ecs-${{ inputs.image_tag }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-2
+  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+  ECR_REGISTRY: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-2.amazonaws.com
+
+jobs:
+
+  deploy-ecs:
+
+    name: Deploy ${{ matrix.service }} to ECS
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+
+        include:
+
+          - service: frontend-service
+            container: frontend
+            image: myreact
+            cluster: my-application-cluster
+            task-definition: ecs/task-definitions/frontend.json
+
+          - service: gateway-service
+            container: mynginx
+            image: mynginx
+            cluster: my-application-cluster
+            task-definition: ecs/task-definitions/gateway.json
+
+          - service: menu-service
+            container: menu-service
+            image: menu-service
+            cluster: my-application-cluster
+            task-definition: ecs/task-definitions/menu.json
+
+          - service: order-service
+            container: order-service
+            image: order-service
+            cluster: my-application-cluster
+            task-definition: ecs/task-definitions/order.json
+
+          - service: reservation-service
+            container: reservation-service
+            image: reservation-service
+            cluster: my-application-cluster
+            task-definition: ecs/task-definitions/reservation.json
+
+          - service: customer-service
+            container: customer-service
+            image: customer-service
+            cluster: my-application-cluster
+            task-definition: ecs/task-definitions/customer.json
+
+          - service: kitchen-service
+            container: kitchen-service
+            image: kitchen-service
+            cluster: my-application-cluster
+            task-definition: ecs/task-definitions/kitchen.json
+
+          - service: delivery-service
+            container: delivery-service
+            image: delivery-service
+            cluster: my-application-cluster
+            task-definition: ecs/task-definitions/delivery.json
+
+          - service: payment-service
+            container: payment-service
+            image: payment-service
+            cluster: my-application-cluster
+            task-definition: ecs/task-definitions/payment.json
+
+          - service: notification-service
+            container: notification-service
+            image: notification-service
+            cluster: my-application-cluster
+            task-definition: ecs/task-definitions/notification.json
+
+          - service: analytics-service
+            container: analytics-service
+            image: analytics-service
+            cluster: my-application-cluster
+            task-definition: ecs/task-definitions/analytics.json
+
+          - service: promotion-service
+            container: promotion-service
+            image: promotion-service
+            cluster: my-application-cluster
+            task-definition: ecs/task-definitions/promotion.json
+
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Configure AWS
+        uses: ./.github/actions/aws-configuration
+        with:
+          cloud_name: aws
+          aws_role: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws_region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS identity
+        run: |
+          aws sts get-caller-identity
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set ECS image
+        id: image
+        shell: bash
+        run: |
+          ECR_IMAGE="${ECR_REGISTRY}/${{ matrix.image }}:${{ inputs.image_tag }}"
+          echo "ECR_IMAGE=$ECR_IMAGE" >> "$GITHUB_ENV"
+          echo "Deploying:"
+          echo "$ECR_IMAGE"
+
+      - name: Verify ECR image
+        shell: bash
+        run: |
+          aws ecr describe-images \
+            --repository-name "${{ matrix.image }}" \
+            --image-ids imageTag="${{ inputs.image_tag }}" \
+            --region "${AWS_REGION}"
+
+      - name: Render ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ matrix.task-definition }}
+          container-name: ${{ matrix.container }}
+          image: ${{ env.ECR_IMAGE }}
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ matrix.service }}
+          cluster: ${{ matrix.cluster }}
+          wait-for-service-stability: true
+          enable-ecs-managed-tags: true
+
+      - name: Verify ECS service
+        shell: bash
+        run: |
+          aws ecs describe-services \
+            --cluster "${{ matrix.cluster }}" \
+            --services "${{ matrix.service }}" \
+            --region "${AWS_REGION}" \
+            --query 'services[0].{Service:serviceName,Status:status,Running:runningCount,Desired:desiredCount,TaskDefinition:taskDefinition}' \
+            --output table
