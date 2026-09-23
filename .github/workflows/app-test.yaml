@@ -1,77 +1,86 @@
 name: APP TEST
-on: 
-    push:
-        branches:
-            - main 
-    workflow_dispatch:
-    
-permissions:
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+      types:
+          - "opened"
+          - "reopened"
+          - "synchronize"
+      branches:
+        - main
+
+  workflow_dispatch:
+
+permissions: 
     contents: read
 
 env:
-    NODE_VERSION: "24"
+  NODE_VERSION: "24"
 
 concurrency:
-    group: ./.github/workflows/app-test.yaml
-    cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-    app-test:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v7
-              with:
-                  fetch-depth: 0
+  app-test:
+    name: Node.js CI
 
-            - uses: gitleaks/gitleaks-action@v3
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    runs-on: ubuntu-latest
 
-            - uses: actions/setup-node@v7
-              with:
-                  node-version: ${{ env.NODE_VERSION }}
-                  with:
-                      cache: "npm"
-                      cache-dependency-path: "./package*.json"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
 
-            - run: npm ci --omit=dev --no-audit --no-fund
-              
-            - run: npm install pylint bandit flake8 pytest
-              
-            - run: npm pylint $(git ls-files '*.cjs', '*.js', '*.jsx') | tee .txt
- 
-            - run: npm bandit $(git ls-files '*.cjs', '*.js', '*.jsx') | tee .txt
-              
-            - run: npm flake8 $(git ls-files '*.cjs', '*.js', '*.jsx') | tee .txt
-              
-            - run: npm pytest $(git ls-files '*.cjs', '*.js', '*.jsx') | tee .txt
-              
-            - run: |
-                npm install build 
-                npm run build | tee .txt
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
 
-            - uses: actions/upload-artifact@v7
-              with:
-                  name:
-                  path:
-                      
-            - uses: actions/upload-artifact@v7
-              with:
-                  name:
-                  path:
-                      
-            - uses: actions/upload-artifact@v7
-              with:
-                  name:
-                  path:
-                      
-            - uses: actions/upload-artifact@v7
-              with:
-                  name:
-                  path:
-                      
-            - uses: actions/upload-artifact@v7
-              with:
-                  name:
-                  path:
+      - name: Run ESLint
+        run: npm run lint
+      - name: Check formatting
+        run: npm run format:check
+      - name: Run tests
+        run: npm test
+
+      - name: Build application
+        run: npm run build
+
+      - name: Upload build artifact
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-build-${{ github.sha }}
+          path: |
+            dist/
+            build/
+          if-no-files-found: ignore
+          retention-days: 7
+
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-${{ github.sha }}
+          path: |
+            coverage/
+            test-results/
+            reports/
+          if-no-files-found: ignore
+          retention-days: 7
+
                           
