@@ -8,6 +8,10 @@ on:
 permissions:
     contents: read
 
+concurrency:
+    group: ./.github/workflows/compose-test.yaml
+    cancel-in-progress: false
+
 jobs:
     docker-test:
         runs-on: ubuntu-latest

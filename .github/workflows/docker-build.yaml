@@ -22,6 +22,9 @@ env:
     PROMOTION_IMAGE: "promotion-service"
     RESERVATION_IMAGE: "reservation-service"
 
+concurrency:
+    group: ./.github/workflows/docker-build.yaml
+    cancel-in-progress: false
 
 jobs:
     docker-build:

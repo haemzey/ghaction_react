@@ -8,6 +8,10 @@ on:
 permissions:
     contents: read
 
+concurrency:
+    group: ./.github/workflows/smoke.test.yaml
+    cancel-in-progress: false
+
 jobs:
     docker-test:
         runs-on: ubuntu-latest
@@ -36,44 +40,77 @@ jobs:
            
             - if: ${{ always() }}
               run: curl --fail http://localhost:3101/health || true
+            - if: ${{ always() }}
               run: curl --fail http://localhost:3102/health || true
+            - if: ${{ always() }}
               run: curl --fail http://localhost:3103/health || true
+            - if: ${{ always() }}  
               run: curl --fail http://localhost:3104/health || true
+            - if: ${{ always() }} 
               run: curl --fail http://localhost:3105/health || true
+            - if: ${{ always() }}
               run: curl --fail http://localhost:3106/health || true
+            - if: ${{ always() }}  
               run: curl --fail http://localhost:3107/health || true
+            - if: ${{ always() }}  
               run: curl --fail http://localhost:3108/health || true
+            - if: ${{ always() }}
               run: curl --fail http://localhost:3109/health || true
+            - if: ${{ always() }}
               run: curl --fail http://localhost:3110/health || true
+            - if: ${{ always() }}
               run: curl --fail http://localhost:80/health || true
+            - if: ${{ always() }}
               run: curl --fail http://localhost:4173/health || true
 
 
             - if: ${{ always() }}
               run: docker logs ANALYTICS_IMAGE
+            - if: ${{ always() }}
               run: docker logs CUSTOMER_IMAGE
+            - if: ${{ always() }}
               run: docker logs DELIVERY_IMAGE
+            - if: ${{ always() }}
               run: docker logs KITCHEN_IMAGE 
+            - if: ${{ always() }}
               run: docker logs MENU_IMAGE 
+            - if: ${{ always() }}
               run: docker logs NOTIFICATION_IMAGE
+            - if: ${{ always() }}
               run: docker logs ORDER_IMAGE
+            - if: ${{ always() }}
               run: docker logs PAYMENT_IMAGE
+            - if: ${{ always() }}
               run: docker logs PROMOTION_IMAGE 
+            - if: ${{ always() }}
               run: docker logs RESERVATION_IMAGE 
+            - if: ${{ always() }}
               run: docker logs mynginx
+            - if: ${{ always() }}
               run: docker logs myreact
               
 
             - if: ${{ always() }}  
               run: docker rm -rf ANALYTICS_IMAGE
+            - if: ${{ always() }}
               run: docker rm -rf CUSTOMER_IMAGE
+            - if: ${{ always() }}
               run: docker rm -rf DELIVERY_IMAGE
+            - if: ${{ always() }}
               run: docker rm -rf KITCHEN_IMAGE 
+            - if: ${{ always() }}
               run: docker rm -rf MENU_IMAGE 
+            - if: ${{ always() }}
               run: docker rm -rf NOTIFICATION_IMAGE
+            - if: ${{ always() }}
               run: docker rm -rf ORDER_IMAGE
+            - if: ${{ always() }}
               run: docker rm -rf PAYMENT_IMAGE
+            - if: ${{ always() }}
               run: docker rm -rf PROMOTION_IMAGE 
+            - if: ${{ always() }}
               run: docker rm -rf RESERVATION_IMAGE 
+            - if: ${{ always() }}
               run: docker rm -rf mynginx
+            - if: ${{ always() }}
               run: docker rm -rf myreact

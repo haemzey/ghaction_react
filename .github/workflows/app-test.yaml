@@ -11,6 +11,10 @@ permissions:
 env:
     NODE_VERSION: "24"
 
+concurrency:
+    group: ./.github/workflows/app-test.yaml
+    cancel-in-progress: false
+
 jobs:
     app-test:
         runs-on: ubuntu-latest
