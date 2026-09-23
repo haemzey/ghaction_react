@@ -1,0 +1,86 @@
+name: DEPLOY ECR
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image tag to publish to ECR"
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+
+concurrency:
+  group: deploy-ecr-${{ inputs.image_tag }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-2
+  DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME }}
+  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+
+jobs:
+  deploy-ecr:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - analytics-service
+          - customer-service
+          - delivery-service
+          - kitchen-service
+          - menu-service
+          - notification-service
+          - order-service
+          - payment-service
+          - promotion-service
+          - reservation-service
+          - myreact
+          - mynginx
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Configure AWS
+        uses: ./.github/actions/aws-configuration
+        secrets: inherit
+        with:
+          cloud_name: aws
+          aws_role: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws_region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS identity
+        run: |
+          aws sts get-caller-identity
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Pull Docker Hub image
+        run: |
+          docker pull \
+            "${DOCKER_USERNAME}/${{ matrix.image }}:${{ inputs.image_tag }}"
+
+      - name: Tag image for ECR
+        run: |
+          ECR_IMAGE="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${{ matrix.image }}:${{ inputs.image_tag }}"
+
+          docker tag \
+            "${DOCKER_USERNAME}/${{ matrix.image }}:${{ inputs.image_tag }}" \
+            "$ECR_IMAGE"
+
+          echo "ECR image:"
+          echo "$ECR_IMAGE"
+
+      - name: Push image to ECR
+        run: |
+          ECR_IMAGE="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${{ matrix.image }}:${{ inputs.image_tag }}"
+
+          docker push "$ECR_IMAGE"
+
