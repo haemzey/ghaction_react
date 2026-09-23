@@ -1,0 +1,363 @@
+name: DEPLOY EBS
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Docker image tag to deploy to Elastic Beanstalk
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+
+  group: deploy-ebs-${{ inputs.image_tag }}
+
+  cancel-in-progress: false
+
+env:
+
+  AWS_REGION: us-east-2
+
+  DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME }}
+
+  EB_APPLICATION_NAME: ${{ vars.EB_APPLICATION_NAME }}
+
+  EB_ENVIRONMENT_NAME: ${{ vars.EB_ENVIRONMENT_NAME }}
+
+  EB_S3_BUCKET: ${{ vars.EB_S3_BUCKET }}
+
+
+jobs:
+
+  deploy-ebs:
+
+    name: Deploy Docker Compose to Elastic Beanstalk
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Configure AWS
+        uses: ./.github/actions/aws-configuration
+        with:
+          cloud_name: aws
+          aws_role: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws_region: ${{ env.AWS_REGION }}
+
+
+      - name: Verify AWS identity
+        shell: bash
+
+        run: |
+
+          aws sts get-caller-identity
+
+      - name: Show deployment information
+        shell: bash
+
+        run: |
+
+          echo "Elastic Beanstalk application:"
+          echo "${EB_APPLICATION_NAME}"
+
+          echo "Elastic Beanstalk environment:"
+          echo "${EB_ENVIRONMENT_NAME}"
+
+          echo "Docker Hub namespace:"
+          echo "${DOCKER_USERNAME}"
+
+          echo "Image tag:"
+          echo "${{ inputs.image_tag }}"
+
+      - name: Create deployment directory
+        shell: bash
+
+        run: |
+
+          rm -rf eb-deployment
+
+          mkdir -p eb-deployment
+
+      - name: Generate EB Docker Compose
+        shell: bash
+
+        run: |
+
+          cat > eb-deployment/docker-compose.yml <<EOF
+
+          services:
+
+            frontend:
+
+              image: ${DOCKER_USERNAME}/myreact:${{ inputs.image_tag }}
+
+              expose:
+                - "4173"
+
+              networks:
+                - app-network
+
+
+            mynginx:
+
+              image: ${DOCKER_USERNAME}/mynginx:${{ inputs.image_tag }}
+
+              ports:
+                - "80:80"
+
+              depends_on:
+
+                - frontend
+
+                - menu-service
+                - order-service
+                - reservation-service
+                - customer-service
+                - kitchen-service
+                - delivery-service
+                - payment-service
+                - notification-service
+                - analytics-service
+                - promotion-service
+
+              networks:
+                - app-network
+
+
+            menu-service:
+
+              image: ${DOCKER_USERNAME}/menu-service:${{ inputs.image_tag }}
+
+              expose:
+                - "3101"
+
+              networks:
+                - app-network
+
+
+            order-service:
+
+              image: ${DOCKER_USERNAME}/order-service:${{ inputs.image_tag }}
+
+              expose:
+                - "3102"
+
+              networks:
+                - app-network
+
+
+            reservation-service:
+
+              image: ${DOCKER_USERNAME}/reservation-service:${{ inputs.image_tag }}
+
+              expose:
+                - "3103"
+
+              networks:
+                - app-network
+
+
+            customer-service:
+
+              image: ${DOCKER_USERNAME}/customer-service:${{ inputs.image_tag }}
+
+              expose:
+                - "3104"
+
+              networks:
+                - app-network
+
+
+            kitchen-service:
+
+              image: ${DOCKER_USERNAME}/kitchen-service:${{ inputs.image_tag }}
+
+              expose:
+                - "3105"
+
+              networks:
+                - app-network
+
+
+            delivery-service:
+
+              image: ${DOCKER_USERNAME}/delivery-service:${{ inputs.image_tag }}
+
+              expose:
+                - "3106"
+
+              networks:
+                - app-network
+
+
+            payment-service:
+
+              image: ${DOCKER_USERNAME}/payment-service:${{ inputs.image_tag }}
+
+              expose:
+                - "3107"
+
+              networks:
+                - app-network
+
+
+            notification-service:
+
+              image: ${DOCKER_USERNAME}/notification-service:${{ inputs.image_tag }}
+
+              expose:
+                - "3108"
+
+              networks:
+                - app-network
+
+
+            analytics-service:
+
+              image: ${DOCKER_USERNAME}/analytics-service:${{ inputs.image_tag }}
+
+              expose:
+                - "3109"
+
+              networks:
+                - app-network
+
+
+            promotion-service:
+
+              image: ${DOCKER_USERNAME}/promotion-service:${{ inputs.image_tag }}
+
+              expose:
+                - "3110"
+
+              networks:
+                - app-network
+
+
+          networks:
+
+            app-network:
+
+              driver: bridge
+          EOF
+
+
+      - name: Show EB Docker Compose
+        shell: bash
+
+        run: |
+          cat eb-deployment/docker-compose.yml
+
+      - name: Validate Docker Compose
+        shell: bash
+
+        run: |
+
+          docker compose \
+            -f eb-deployment/docker-compose.yml \
+            config
+
+      - name: Generate EB version label
+        id: version
+        shell: bash
+
+        run: |
+
+          VERSION_LABEL="v${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}"
+
+          echo "VERSION_LABEL=${VERSION_LABEL}" >> "$GITHUB_OUTPUT"
+
+          echo "Elastic Beanstalk version:"
+          echo "${VERSION_LABEL}"
+
+
+      - name: Create deployment ZIP
+        shell: bash
+
+        run: |
+
+          cd eb-deployment
+
+          zip -r "../eb-deployment.zip" .
+
+          cd ..
+
+          echo "Deployment bundle:"
+          ls -lh eb-deployment.zip
+
+      - name: Upload deployment bundle to S3
+        shell: bash
+
+        run: |
+
+          S3_KEY="elastic-beanstalk/${EB_APPLICATION_NAME}/${{ steps.version.outputs.VERSION_LABEL }}.zip"
+
+          echo "Uploading:"
+          echo "s3://${EB_S3_BUCKET}/${S3_KEY}"
+
+          aws s3 cp \
+            eb-deployment.zip \
+            "s3://${EB_S3_BUCKET}/${S3_KEY}" \
+            --region "${AWS_REGION}"
+
+          echo "S3_KEY=${S3_KEY}" >> "$GITHUB_ENV"
+
+      - name: Create Elastic Beanstalk application version
+        shell: bash
+
+        run: |
+
+          aws elasticbeanstalk create-application-version \
+            --application-name "${EB_APPLICATION_NAME}" \
+            --version-label "${{ steps.version.outputs.VERSION_LABEL }}" \
+            --description "Docker Compose deployment ${GITHUB_SHA}" \
+            --source-bundle \
+              S3Bucket="${EB_S3_BUCKET}",S3Key="${S3_KEY}" \
+            --region "${AWS_REGION}"
+
+
+      - name: Deploy to Elastic Beanstalk
+        shell: bash
+
+        run: |
+
+          aws elasticbeanstalk update-environment \
+            --application-name "${EB_APPLICATION_NAME}" \
+            --environment-name "${EB_ENVIRONMENT_NAME}" \
+            --version-label "${{ steps.version.outputs.VERSION_LABEL }}" \
+            --region "${AWS_REGION}"
+
+      - name: Wait for Elastic Beanstalk deployment
+        shell: bash
+
+        run: |
+
+          aws elasticbeanstalk wait environment-updated \
+            --application-name "${EB_APPLICATION_NAME}" \
+            --environment-name "${EB_ENVIRONMENT_NAME}" \
+            --region "${AWS_REGION}"
+
+      - name: Verify Elastic Beanstalk environment
+        shell: bash
+
+        run: |
+
+          aws elasticbeanstalk describe-environments \
+            --application-name "${EB_APPLICATION_NAME}" \
+            --environment-names "${EB_ENVIRONMENT_NAME}" \
+            --region "${AWS_REGION}" \
+            --query 'Environments[0].{
+              Application:ApplicationName,
+              Environment:EnvironmentName,
+              Status:Status,
+              Health:Health,
+              Version:VersionLabel,
+              URL:CNAME
+            }' \
+            --output table
