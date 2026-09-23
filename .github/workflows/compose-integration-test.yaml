@@ -1,0 +1,227 @@
+name: COMPOSE TEST & INTEGRATION TEST 
+on: 
+    workflow_run: 
+      workflows: 
+        - DOCKER TEST 
+      types: 
+        - completed 
+      branches: 
+      - main 
+    workflow_dispatch:
+
+permissions: 
+  contents: read 
+  actions: read 
+  
+concurrency: 
+  group: compose-test-${{ github.event.workflow_run.id || github.run_id }} 
+  cancel-in-progress: false 
+  
+jobs: 
+  compose-integration-test: 
+    if: > 
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success'
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker Login
+        uses: docker/login-action@v4
+        with:
+          username: ${{ inputs.docker_username }}
+          password: ${{ inputs.docker_token }}
+
+      - name: Download image metadata
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v7
+        with:
+          name: image-tag-metadata
+          path: ./metadata
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Load image tag
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            cat ./metadata/image-tag.env >> "$GITHUB_ENV"
+          else
+            echo "IMAGE_TAG=${{ inputs.image_tag }}" >> "$GITHUB_ENV"
+          fi
+          echo "Testing image tag: $IMAGE_TAG"
+
+
+      - name: Validate Compose configuration
+        run: |
+          docker compose \
+            -f docker-compose.yaml \
+            -f integration-docker-compose.yaml \
+            config
+
+
+      - name: Pull application images
+        run: |
+          docker compose \
+            -f docker-compose.yaml \
+            -f integration-docker-compose.yaml \
+            pull
+
+      - name: run containers
+        run: |
+          docker compose \
+          -f docker-compose.yaml \
+          -f integration-docker-compose.yaml \
+          up -d --no-build
+
+
+      - name: Check Services Health
+        uses: thegabriele97/dockercompose-health-action@main
+        with:
+          filename: docker-compose.yaml
+          timeout: "60"
+          workdir: ./
+
+
+      - uses: adambirds/docker-compose-action@v1.5.0
+        with:
+          compose-file: "./docker-compose.yaml"
+          test-container: "frontend"
+          test-command: "npm test"
+
+      - uses: adambirds/docker-compose-action@v1.5.0
+        with:
+          compose-file: "./docker-compose.yaml"
+          test-container: "menu-service"
+          test-command: "npm test"
+
+      - uses: adambirds/docker-compose-action@v1.5.0
+        with:
+          compose-file: "./docker-compose.yaml"
+          test-container: "order-service"
+          test-command: "npm test"
+
+      - uses: adambirds/docker-compose-action@v1.5.0
+        with:
+          compose-file: "./docker-compose.yaml"
+          test-container: "reservation-service"
+          test-command: "npm test"
+
+      - uses: adambirds/docker-compose-action@v1.5.0
+        with:
+          compose-file: "./docker-compose.yaml"
+          test-container: "customer-service"
+          test-command: "npm test"
+
+      - uses: adambirds/docker-compose-action@v1.5.0
+        with:
+          compose-file: "./docker-compose.yaml"
+          test-container: "mynginx"
+          test-command: "npm test"
+
+      - uses: adambirds/docker-compose-action@v1.5.0
+        with:
+          compose-file: "./docker-compose.yaml"
+          test-container: "kitchen-service"
+          test-command: "npm test"
+
+      - uses: adambirds/docker-compose-action@v1.5.0
+        with:
+          compose-file: "./docker-compose.yaml"
+          test-container: "delivery-service"
+          test-command: "npm test"
+
+      - uses: adambirds/docker-compose-action@v1.5.0
+        with:
+          compose-file: "./docker-compose.yaml"
+          test-container: "payment-service"
+          test-command: "npm test"
+
+      - uses: adambirds/docker-compose-action@v1.5.0
+        with:
+          compose-file: "./docker-compose.yaml"
+          test-container: "notification-service"
+          test-command: "npm test"
+
+      - uses: adambirds/docker-compose-action@v1.5.0
+        with:
+          compose-file: "./docker-compose.yaml"
+          test-container: "analytics-service"
+          test-command: "npm test"
+
+      - uses: adambirds/docker-compose-action@v1.5.0
+        with:
+          compose-file: "./docker-compose.yaml"
+          test-container: "promotion-service"
+          test-command: "npm test"
+
+      - uses: adambirds/docker-compose-action@v1.5.0
+        with:
+          compose-file: "./integration-docker-compose.yaml"
+          test-container: "integration-test"
+          test-command: "npm test"
+
+
+      - name: Start application stack
+        run: |
+          docker compose \
+            -f docker-compose.yaml \
+            -f integration-docker-compose.yaml \
+            up -d --no-build
+
+
+      - name: Show running containers
+        run: |
+          docker compose \
+            -f docker-compose.yaml \
+            -f integration-docker-compose.yaml \
+            ps
+
+
+      - name: Show application logs
+        if: always()
+        run: |
+          docker compose \
+            -f docker-compose.yaml \
+            -f integration-docker-compose.yaml \
+            logs --tail=100
+
+
+      - name: Run integration tests
+        run: |
+          docker compose \
+            -f docker-compose.yaml \
+            -f integration-docker-compose.yaml \
+            run --rm integration-test
+
+
+      - name: Collect failure logs
+        if: failure()
+        run: |
+          docker compose \
+            -f docker-compose.yaml \
+            -f integration-docker-compose.yaml \
+            ps
+
+          docker compose \
+            -f docker-compose.yaml \
+            -f integration-docker-compose.yaml \
+            logs --tail=200
+
+
+      - name: Cleanup Compose stack
+        if: always()
+        run: |
+          docker compose \
+            -f docker-compose.yaml \
+            -f integration-docker-compose.yaml \
+            down --volumes --remove-orphans

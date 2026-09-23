@@ -1,0 +1,159 @@
+name: DOCKER TEST
+on:
+    workflow_run:
+        workflows:
+            - DOCKER BUILD
+        types:
+            - completed
+        branches:
+            - main
+
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    actions: read
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.event.workflow_run.id || github.run_id }}
+    cancel-in-progress: false
+
+jobs:
+    docker-test:
+        if: >
+            github.event_name == 'workflow_dispatch' ||
+                
+            github.event_name == 'workflow_run' &&
+
+            github.event.workflow_run.conclusion == 'success'
+
+        runs-on: ubuntu-latest
+
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - image: analytics-service
+                      file: ./services/analytics-service
+                    - image: customer-service
+                      file: ./services/customer-service
+                    - image: delivery-service
+                      file: ./services/delivery-service
+                    - image: kitchen-service
+                      file: ./services/kitchen-service
+                    - image: menu-service
+                      file: ./services/menu-service
+                    - image: notification-service
+                      file: ./services/notification-service
+                    - image: order-service
+                      file: ./services/order-service
+                    - image: payment-service
+                      file: ./services/payment-service
+                    - image: promotion-service
+                      file: ./services/promotion-service
+                    - image: reservation-service
+                      file: ./services/reservation-service
+                    - image: myreact
+                      file: ./frontend
+                    - image: mynginx
+                      file: ./gateway
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v7
+              with:
+                  ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+                  fetch-depth: 0
+
+            - name: Download image metadata
+              if: github.event_name == 'workflow_run'
+              uses: actions/download-artifact@v7
+              with:
+                  name: image-tag-metadata
+                  path: ./metadata
+                  run-id: ${{ github.event.workflow_run.id }}
+                  github-token: ${{ github.token }}
+
+            - name: Load image metadata
+              if: github.event_name == 'workflow_run'
+              shell: bash
+              run: |
+                  set -euo pipefail
+
+                  cat ./metadata/image-tag.env >> "$GITHUB_ENV"
+
+                  echo "IMAGE_TAG:"
+                  grep '^IMAGE_TAG=' ./metadata/image-tag.env
+
+                  echo "BUILD_RUN_ID:"
+                  grep '^BUILD_RUN_ID=' ./metadata/image-tag.env
+
+            - name: Login to Docker Hub
+              uses: docker/login-action@v4
+              with:
+                  username: ${{ vars.DOCKER_USERNAME }}
+                  password: ${{ secrets.DOCKER_TOKEN }}
+
+            - name: Pull ${{ matrix.image }} image
+              shell: bash
+              env:
+                  IMAGE: ${{ vars.DOCKER_USERNAME }}/${{ matrix.image }}:${{ env.IMAGE_TAG }}
+              run: |
+                  set -euo pipefail
+
+                  echo "Pulling image:"
+                  echo "$IMAGE"
+                  docker pull "$IMAGE"
+
+            - name: Inspect ${{ matrix.image }} image
+              shell: bash
+              env:
+                  IMAGE: ${{ vars.DOCKER_USERNAME }}/${{ matrix.image }}:${{ env.IMAGE_TAG }}
+              run: |
+                  set -euo pipefail
+
+                  echo "Inspect  image:"
+                  echo "$IMAGE"
+                  docker image inspect "$IMAGE"
+
+            - name: Trivy image vulnerability scan
+              uses: aquasecurity/trivy-action@v0.36.0
+              with:
+                  image-ref: ${{ vars.DOCKER_USERNAME }}/${{ matrix.image }}:${{ env.IMAGE_TAG }}
+                  format: table
+                  vuln-type: os,library
+                  scanners: vuln
+                  ignore-unfixed: true
+                  severity: CRITICAL,HIGH
+                  exit-code: 0
+                  output: vuln.txt
+
+            - name: Trivy filesystem secret scan
+              uses: aquasecurity/trivy-action@v0.36.0
+              with:
+                  scan-type: fs
+                  scan-ref: ${{ matrix.file }}
+                  scanners: secret,misconfig
+                  severity: CRITICAL,HIGH
+                  ignore-unfixed: true
+                  exit-code: 0
+                  format: table
+                  output: secrets.txt
+
+            - name: Upload vulnerability report
+              if: always()
+              uses: actions/upload-artifact@v7
+              with:
+                  name: vuln-test-${{ matrix.image }}
+                  path: vuln.txt
+                  if-no-files-found: ignore
+                  retention-days: 7
+
+            - name: Upload secrets report
+              if: always()
+              uses: actions/upload-artifact@v7
+              with:
+                  name: secrets-test-${{ matrix.file }}
+                  path: secrets.txt
+                  if-no-files-found: ignore
+                  retention-days: 7
