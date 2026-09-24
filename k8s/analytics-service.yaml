@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-service
+  namespace: restaurant-app
+  labels:
+    app: analytics-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: analytics-service
+  template:
+    metadata:
+      labels:
+        app: analytics-service
+    spec:
+      containers:
+        - name: analytics-service
+          image: haemzay/analytics-service:v7
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3109
+          envFrom:
+            - configMapRef:
+                name: shared-env
+          readinessProbe:
+            tcpSocket:
+              port: 3109
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 3109
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            allowPrivilegeEscalation: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-service
+  namespace: restaurant-app
+spec:
+  selector:
+    app: analytics-service
+  ports:
+    - port: 3109
+      targetPort: 3109
+  type: ClusterIP
