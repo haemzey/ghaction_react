@@ -38,8 +38,8 @@ jobs:
       - name: Docker Login
         uses: docker/login-action@v4
         with:
-          username: ${{ inputs.docker_username }}
-          password: ${{ inputs.docker_token }}
+          username: ${{ vars.docker_username }}
+          password: ${{ secrets.docker_token }}
 
       - name: Download image metadata
         if: github.event_name == 'workflow_run'
