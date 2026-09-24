@@ -6,9 +6,7 @@ COPY services/promotion-service/package*.json ./
 
 RUN npm ci --omit=dev --no-audit --no-fund
 
-COPY services/create-service.cjs ./
-
-COPY services/promotion-service/server.cjs ./
+COPY server.cjs ./
 
 EXPOSE 3110
 
