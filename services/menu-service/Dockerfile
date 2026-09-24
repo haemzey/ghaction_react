@@ -6,9 +6,7 @@ COPY services/menu-service/package*.json ./
 
 RUN npm ci --omit=dev --no-audit --no-fund
 
-COPY services/create-service.cjs ./
-
-COPY services/menu-service/server.cjs ./
+COPY server.cjs ./
 
 EXPOSE 3101
 
