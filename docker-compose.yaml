@@ -1,160 +1,389 @@
 services:
+
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+
     image: ${DOCKER_USERNAME}/myreact:${IMAGE_TAG}
+
     container_name: frontend
+
     restart: unless-stopped
-    expose:
-      - "4173"
+
+    ports:
+      - "4173:4173"
+
     networks:
       - app-network
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:4173/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
 
   mynginx:
     build:
       context: ./gateway
       dockerfile: Dockerfile
+
     image: ${DOCKER_USERNAME}/mynginx:${IMAGE_TAG}
+
     container_name: mynginx
+
     restart: unless-stopped
+
     ports:
       - "80:80"
+
     depends_on:
-      - frontend
-      - menu-service
-      - order-service
-      - reservation-service
-      - customer-service
-      - kitchen-service
-      - delivery-service
-      - payment-service
-      - notification-service
-      - analytics-service
-      - promotion-service
+      frontend:
+        condition: service_healthy
+
+      menu-service:
+        condition: service_healthy
+
+      order-service:
+        condition: service_healthy
+
+      reservation-service:
+        condition: service_healthy
+
+      customer-service:
+        condition: service_healthy
+
+      kitchen-service:
+        condition: service_healthy
+
+      delivery-service:
+        condition: service_healthy
+
+      payment-service:
+        condition: service_healthy
+
+      notification-service:
+        condition: service_healthy
+
+      analytics-service:
+        condition: service_healthy
+
+      promotion-service:
+        condition: service_healthy
+
     networks:
       - app-network
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://127.0.0.1:80/ || exit 1"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   menu-service:
     build:
       context: ./services/menu-service
       dockerfile: Dockerfile
+
     image: ${DOCKER_USERNAME}/menu-service:${IMAGE_TAG}
+
     container_name: menu-service
+
     restart: unless-stopped
+
     expose:
       - "3101"
+
     networks:
       - app-network
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3101/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
 
   order-service:
     build:
       context: ./services/order-service
       dockerfile: Dockerfile
+
     image: ${DOCKER_USERNAME}/order-service:${IMAGE_TAG}
+
     container_name: order-service
+
     restart: unless-stopped
+
     expose:
       - "3102"
+
     networks:
       - app-network
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3102/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
 
   reservation-service:
     build:
       context: ./services/reservation-service
       dockerfile: Dockerfile
+
     image: ${DOCKER_USERNAME}/reservation-service:${IMAGE_TAG}
+
     container_name: reservation-service
+
     restart: unless-stopped
+
     expose:
       - "3103"
+
     networks:
       - app-network
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3103/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   customer-service:
     build:
       context: ./services/customer-service
       dockerfile: Dockerfile
+
     image: ${DOCKER_USERNAME}/customer-service:${IMAGE_TAG}
+
     container_name: customer-service
+
     restart: unless-stopped
+
     expose:
       - "3104"
+
     networks:
       - app-network
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3104/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
 
   kitchen-service:
     build:
       context: ./services/kitchen-service
       dockerfile: Dockerfile
+
     image: ${DOCKER_USERNAME}/kitchen-service:${IMAGE_TAG}
+
     container_name: kitchen-service
+
     restart: unless-stopped
+
     expose:
       - "3105"
+
     networks:
       - app-network
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3105/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+
+  # ============================================================
+  # Delivery Service
+  # ============================================================
 
   delivery-service:
     build:
       context: ./services/delivery-service
       dockerfile: Dockerfile
+
     image: ${DOCKER_USERNAME}/delivery-service:${IMAGE_TAG}
+
     container_name: delivery-service
+
     restart: unless-stopped
+
     expose:
       - "3106"
+
     networks:
       - app-network
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3106/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
 
   payment-service:
     build:
       context: ./services/payment-service
       dockerfile: Dockerfile
+
     image: ${DOCKER_USERNAME}/payment-service:${IMAGE_TAG}
+
     container_name: payment-service
+
     restart: unless-stopped
+
     expose:
       - "3107"
+
     networks:
       - app-network
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3107/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
 
   notification-service:
     build:
       context: ./services/notification-service
       dockerfile: Dockerfile
+
     image: ${DOCKER_USERNAME}/notification-service:${IMAGE_TAG}
+
     container_name: notification-service
+
     restart: unless-stopped
+
     expose:
       - "3108"
+
     networks:
       - app-network
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3108/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
 
   analytics-service:
     build:
       context: ./services/analytics-service
       dockerfile: Dockerfile
+
     image: ${DOCKER_USERNAME}/analytics-service:${IMAGE_TAG}
+
     container_name: analytics-service
+
     restart: unless-stopped
+
     expose:
       - "3109"
+
     networks:
       - app-network
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3109/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
 
   promotion-service:
     build:
       context: ./services/promotion-service
       dockerfile: Dockerfile
+
     image: ${DOCKER_USERNAME}/promotion-service:${IMAGE_TAG}
+
     container_name: promotion-service
+
     restart: unless-stopped
+
     expose:
       - "3110"
+
     networks:
       - app-network
 
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3110/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+
 networks:
-  mynetworks:
+  app-network:
     driver: bridge
