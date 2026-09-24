@@ -12,6 +12,7 @@ services:
       RETRY_DELAY: 2
 
     depends_on:
-      - mynginx
+      mynginx:
+        condition: service_healthy
 
     restart: "no"
