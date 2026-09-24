@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reservation-service
+  namespace: restaurant-app
+  labels:
+    app: reservation-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: reservation-service
+  template:
+    metadata:
+      labels:
+        app: reservation-service
+    spec:
+      containers:
+        - name: reservation-service
+          image: haemzay/reservation-service:v7
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3103
+          envFrom:
+            - configMapRef:
+                name: shared-env
+          readinessProbe:
+            tcpSocket:
+              port: 3103
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 3103
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            allowPrivilegeEscalation: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reservation-service
+  namespace: restaurant-app
+spec:
+  selector:
+    app: reservation-service
+  ports:
+    - port: 3103
+      targetPort: 3103
+  type: ClusterIP
